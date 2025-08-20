@@ -140,7 +140,7 @@ async function fetchList(params){
     renderConnection('ok');
 
     // Se asume que Apps Script ya ordena por fecha/hora desc
-    const rows = json.data || [];
+    const rows = json.rows || [];
     renderSummary(rows[0] || null);
     renderTable(rows.slice(0,50)); // recorta tabla a 50
     return rows;
@@ -187,4 +187,3 @@ document.addEventListener('DOMContentLoaded', ()=>{
   // Auto-refresh cada 60s (opcional)
   setInterval(()=> fetchList(getQueryParams()), 60000);
 });
-
