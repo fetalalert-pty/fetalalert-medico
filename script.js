@@ -13,12 +13,12 @@ function qs(sel){ return document.querySelector(sel); }
 
 function getQueryParams(){
   const p = new URLSearchParams(window.location.search);
-  const hadKey = p.has('key'); // para no escribir la clave en la URL si no estaba
+  const hadKey = p.has('key');
   return {
     key:       p.get('key')       || DEFAULT_KEY,
     deviceId:  p.get('deviceId')  || '',
     patientId: p.get('patientId') || '',
-    hadKey     // boolean
+    hadKey
   };
 }
 
