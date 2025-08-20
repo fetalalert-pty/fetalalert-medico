@@ -2,7 +2,9 @@
    CONFIGURACIÓN
    ============================ */
 // URL de la Web App de Apps Script (termina en /exec)
-const APPS_URL = 'https://script.google.com/macros/s/AKfycbzdvegcKreXfYtCVESD7_kftfONWgtUW5fXkuFwT4pcSCY6-v0ONHKddxr38HhKxTbi/exec';
+const APPS_URL   = 'https://script.google.com/macros/s/AKfycbzdvegcKreXfYtCVESD7_kftfONWgtUW5fXkuFwT4pcSCY6-v0ONHKddxr38HhKxTbi/exec';
+// Clave por defecto (fallback) para no depender de ?key= en la URL
+const DEFAULT_KEY = 'FA-Cloud-2025_vJtF!p03';
 
 /* ============================
    UTILIDADES
@@ -11,10 +13,12 @@ function qs(sel){ return document.querySelector(sel); }
 
 function getQueryParams(){
   const p = new URLSearchParams(window.location.search);
+  const hadKey = p.has('key'); // para no escribir la clave en la URL si no estaba
   return {
-    key:       p.get('key')       || '',               
-    deviceId:  p.get('deviceId')  || '',               
-    patientId: p.get('patientId') || ''               
+    key:       p.get('key')       || DEFAULT_KEY,
+    deviceId:  p.get('deviceId')  || '',
+    patientId: p.get('patientId') || '',
+    hadKey     // boolean
   };
 }
 
@@ -121,7 +125,6 @@ async function fetchList(params){
   url.searchParams.set('action','list');
   if (params.key)      url.searchParams.set('key', params.key);
   if (params.deviceId) url.searchParams.set('deviceId', params.deviceId);
-  // Si implementas patientId en Apps Script, también puedes enviarlo
   if (params.patientId) url.searchParams.set('patientId', params.patientId);
 
   // Fechas (opcional)
@@ -139,7 +142,6 @@ async function fetchList(params){
     if (!json.ok) throw new Error('Respuesta no OK');
     renderConnection('ok');
 
-    // Se asume que Apps Script ya ordena por fecha/hora desc
     const rows = json.rows || [];
     renderSummary(rows[0] || null);
     renderTable(rows.slice(0,50)); // recorta tabla a 50
@@ -159,9 +161,8 @@ async function fetchList(params){
 document.addEventListener('DOMContentLoaded', ()=>{
   const params = getQueryParams();
 
-  // Pinta el deviceId o patientId recibido por URL
+  // Pinta el deviceId recibido por URL
   if (params.deviceId) document.getElementById('fld-patient').value = params.deviceId;
-  // Si quieres mostrar patientId en lugar de deviceId: ajusta línea superior
 
   // Botón aplicar
   document.getElementById('btn-apply').addEventListener('click', ()=>{
@@ -169,7 +170,9 @@ document.addEventListener('DOMContentLoaded', ()=>{
 
     const search = new URLSearchParams(window.location.search);
     if (entered) search.set('deviceId', entered); else search.delete('deviceId');
-    if (params.key) search.set('key', params.key);  // preserva key en URL
+
+    // Si la clave venía en la URL, la conservamos; si no, no la escribimos.
+    if (params.hadKey) search.set('key', params.key); else search.delete('key');
 
     history.replaceState({},'', `${location.pathname}?${search.toString()}`);
     fetchList(getQueryParams());
