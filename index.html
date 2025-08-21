@@ -1,4 +1,4 @@
-<!DOCTYPE html>
+<!DOCTYPE html> 
 <html lang="es">
 <head>
   <meta charset="UTF-8" />
@@ -15,7 +15,8 @@
       <h1>FetalAlert – Panel Clínico</h1>
       <p class="md-header__subtitle">Visor para profesionales de la salud</p>
     </div>
-    <div id="md-conn" class="md-conn md-conn--idle">Conectando…</div>
+    <!-- Indicador de conexión a la nube de FetalAlert -->
+    <div id="md-conn" class="md-conn md-conn--idle">Conectando a FA Cloud…</div>
   </header>
 
   <!-- Barra de filtros / info -->
@@ -29,9 +30,10 @@
       <div class="md-field">
         <label>Rango de fecha (opcional)</label>
         <div class="md-inline">
-          <input id="fld-from" type="date" />
+          <!-- límite inferior: 2025-07-01 -->
+          <input id="fld-from" type="date" min="2025-07-01" />
           <span class="md-sep">–</span>
-          <input id="fld-to" type="date" />
+          <input id="fld-to" type="date" min="2025-07-01" />
         </div>
       </div>
 
@@ -72,7 +74,10 @@
 
       <div class="md-card">
         <h3>Estado</h3>
+        <!-- Píldora de estado global -->
         <div id="md-status" class="md-status md-status--idle">Esperando datos…</div>
+        <!-- Detalles compactos del estado -->
+        <p id="md-state-extra" class="md-hint" style="margin-top:.5rem;"></p>
         <p class="md-hint">* Los datos se actualizan cuando la paciente realiza una medición.</p>
       </div>
     </section>
@@ -97,7 +102,7 @@
     </section>
   </main>
   
-    <!-- ========= PIE DE PÁGINA ========= -->
+  <!-- ========= PIE DE PÁGINA ========= -->
   <footer class="footer">
     <p>FetalAlert Panamá &copy; 2025 – Todos los derechos reservados</p>
   </footer>
