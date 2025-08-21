@@ -1,15 +1,15 @@
 /* ============================
    CONFIGURACIÓN
    ============================ */
-// Para la demo local, apunta al JSON junto al HTML
-const APPS_URL   = './medico_demo.json';
-// Clave por defecto (fallback) – no se usa en JSON local, se mantiene por compatibilidad
-const DEFAULT_KEY = 'FA-Cloud-2025_vJtF!p03';
-
-// Fecha mínima (arranque del proyecto en demo)
+const DEFAULT_KEY = 'FA-Cloud-2025_vJtF!p03'; // no se usa en local, se deja por compatibilidad
 const MIN_DATE_STR = '2025-07-01';
+const DEMO_DEVICE_ID = 'DEMO-001';
 
-// Etiquetas del estado global (píldora)
+// JSON local con cache-buster para evitar caché de GitHub Pages
+function jsonURL() {
+  return `./medico_demo.json?rev=${Date.now()}`;
+}
+
 const LBL_STATE = {
   ok:   'Dentro de rango',
   warn: 'Bajo observación',
@@ -20,7 +20,7 @@ const LBL_STATE = {
 /* ============================
    UTILIDADES
    ============================ */
-function qs(sel){ return document.querySelector(sel); }
+const qs = s => document.querySelector(s);
 
 function getQueryParams(){
   const p = new URLSearchParams(window.location.search);
@@ -33,7 +33,6 @@ function getQueryParams(){
   };
 }
 
-// Etiquetas clínicas por tarjeta
 function statusHR(hr){
   if (hr == null || hr === '' || isNaN(hr)) return '–';
   const v = Number(hr);
@@ -49,27 +48,26 @@ function statusSpO2(s){
   return 'Dentro de umbral';
 }
 
-// Fechas
 function toYMD(d){
   const y = d.getFullYear();
   const m = String(d.getMonth()+1).padStart(2,'0');
   const da = String(d.getDate()).padStart(2,'0');
   return `${y}-${m}-${da}`;
 }
-function parseDDMMYYYY(str){ // '04/05/2025'
+function parseDDMMYYYY(str){
   if (!str) return null;
   const [dd,mm,yyyy] = str.split('/').map(x=>parseInt(x,10));
   if (!yyyy || !mm || !dd) return null;
   return new Date(yyyy, mm-1, dd);
 }
-function parseRowDate(r){ // combina fecha + hora
+function parseRowDate(r){
   const d = parseDDMMYYYY(r?.fecha);
   if (!d) return null;
   const [hh,mi] = String(r?.hora||'00:00').split(':').map(x=>parseInt(x,10));
   d.setHours(hh||0, mi||0, 0, 0);
   return d;
 }
-function diffMinutes(a,b){ return Math.round((a-b)/60000); }
+const diffMinutes = (a,b)=> Math.round((a-b)/60000);
 function diffMonths(a,b){
   if (!a || !b) return 0;
   return (b.getFullYear()-a.getFullYear())*12 + (b.getMonth()-a.getMonth()) + 1;
@@ -83,14 +81,14 @@ function fmtMonthYear(d){
 /* ============================
    RENDER
    ============================ */
-function renderConnection(state){
+function renderConnection(state, msg){
   const el = qs('#md-conn');
   if (!el) return;
   if (state==='ok'){
     el.textContent = 'Datos recibidos';
     el.className = 'md-conn md-conn--ok';
   }else if(state==='err'){
-    el.textContent = 'Sin conexión con FA Cloud';
+    el.textContent = msg ? `Error: ${msg}` : 'Sin conexión con FA Cloud';
     el.className = 'md-conn md-conn--err';
   }else{
     el.textContent = 'Conectando a FA Cloud…';
@@ -111,7 +109,6 @@ function renderSummary(last){
   qs('#last-hr-status').textContent   = hrMsg;
   qs('#last-spo2-status').textContent = spo2Msg;
 
-  // Estado global (píldora)
   const st = qs('#md-status');
   if (hrMsg === 'Fuera de umbral establecido' || spo2Msg === 'Fuera de umbral establecido') {
     st.textContent = LBL_STATE.err;
@@ -128,7 +125,6 @@ function renderSummary(last){
   }
 }
 
-// Detalle compacto del estado
 function renderStateDetails(rows){
   const extra = qs('#md-state-extra');
   if (!extra) return;
@@ -192,7 +188,6 @@ function renderTable(rows){
   });
 }
 
-/* Exportar CSV del lado del navegador */
 function exportCSV(rows){
   if(!rows || !rows.length){ alert('No hay datos para exportar'); return; }
   const header = ['FECHA','HORA','FC','SpO2','PATADAS'];
@@ -200,7 +195,7 @@ function exportCSV(rows){
   const csv    = [header.join(','), ...lines].join('\n');
   const blob   = new Blob([csv], {type:'text/csv;charset=utf-8;'});
   const url    = URL.createObjectURL(blob);
-  const a = document.createElement('a');
+  const a      = document.createElement('a');
   a.href = url; a.download = 'historial_fetalalert.csv';
   document.body.appendChild(a); a.click();
   document.body.removeChild(a); URL.revokeObjectURL(url);
@@ -210,27 +205,9 @@ function exportCSV(rows){
    FETCH
    ============================ */
 async function fetchList(params){
-  const isLocal = APPS_URL.endsWith('.json');
-
-  let urlStr;
-  if (isLocal){
-    urlStr = APPS_URL; // no agregamos query params al JSON local
-  } else {
-    const url = new URL(APPS_URL);
-    url.searchParams.set('action','list');
-    if (params.key)       url.searchParams.set('key', params.key);
-    if (params.deviceId)  url.searchParams.set('deviceId', params.deviceId);
-    if (params.patientId) url.searchParams.set('patientId', params.patientId);
-    const f = qs('#fld-from')?.value || '';
-    const t = qs('#fld-to')?.value   || '';
-    if (f) url.searchParams.set('from', f);
-    if (t) url.searchParams.set('to', t);
-    urlStr = url.toString();
-  }
-
   try{
     renderConnection('idle');
-    const res = await fetch(urlStr, { method:'GET' });
+    const res = await fetch(jsonURL(), { method:'GET', cache:'no-store' });
     if (!res.ok) throw new Error('HTTP '+res.status);
     const json = await res.json();
     if (!json.ok) throw new Error('Respuesta no OK');
@@ -238,32 +215,29 @@ async function fetchList(params){
 
     let rows = json.rows || [];
 
-    // En modo local, filtramos por fecha en el cliente y nos aseguramos del orden
-    if (isLocal){
-      const fVal = qs('#fld-from')?.value || '';
-      const tVal = qs('#fld-to')?.value   || '';
-      const fromDate = fVal ? new Date(fVal) : null;
-      const toDate   = tVal ? new Date(tVal) : null;
+    // Filtrado por fecha en cliente
+    const fVal = qs('#fld-from')?.value || '';
+    const tVal = qs('#fld-to')?.value   || '';
+    const fromDate = fVal ? new Date(fVal) : null;
+    const toDate   = tVal ? new Date(tVal) : null;
 
-      rows = rows.filter(r=>{
-        const d = parseDDMMYYYY(r.fecha);
-        if (!d) return false;
-        let ok = true;
-        if (fromDate) ok = ok && (d >= fromDate);
-        if (toDate)   ok = ok && (d <= toDate);
-        return ok;
-      });
-      // Orden descendente por fecha+hora
-      rows.sort((a,b)=> parseRowDate(b) - parseRowDate(a));
-    }
+    rows = rows.filter(r=>{
+      const d = parseDDMMYYYY(r.fecha);
+      if (!d) return false;
+      let ok = true;
+      if (fromDate) ok = ok && (d >= fromDate);
+      if (toDate)   ok = ok && (d <= toDate);
+      return ok;
+    });
+    rows.sort((a,b)=> parseRowDate(b) - parseRowDate(a)); // más reciente primero
 
     renderSummary(rows[0] || null);
     renderStateDetails(rows);
-    renderTable(rows.slice(0,50)); // recorta tabla a 50
+    renderTable(rows.slice(0,50));
     return rows;
   }catch(e){
     console.warn('Error fetch list:', e);
-    renderConnection('err');
+    renderConnection('err', e.message);
     renderSummary(null);
     renderStateDetails([]);
     renderTable([]);
@@ -277,51 +251,38 @@ async function fetchList(params){
 document.addEventListener('DOMContentLoaded', ()=>{
   const params = getQueryParams();
 
-  // Pinta el deviceId recibido por URL
-  if (params.deviceId) document.getElementById('fld-patient').value = params.deviceId;
+  // ID de demo fijo
+  const idEl = document.getElementById('fld-patient');
+  idEl.value = DEMO_DEVICE_ID;
+  idEl.readOnly = true;
 
-  // Inicializa límites y valores por defecto del datepicker
+  // Date pickers: límites y valores por defecto
   const fromEl = document.getElementById('fld-from');
   const toEl   = document.getElementById('fld-to');
   const today  = new Date();
 
-  // límites inferiores fijos
   fromEl.setAttribute('min', MIN_DATE_STR);
   toEl.setAttribute('min',   MIN_DATE_STR);
-
-  // valores por defecto (jul 2025 → hoy)
   if (!fromEl.value) fromEl.value = MIN_DATE_STR;
   if (!toEl.value)   toEl.value   = toYMD(today);
 
-  // coherencia: 'to' no puede ser menor que 'from'
   fromEl.addEventListener('change', ()=>{
     if (toEl.value < fromEl.value) toEl.value = fromEl.value;
     toEl.setAttribute('min', fromEl.value || MIN_DATE_STR);
   });
 
-  // Botón aplicar
+  // Botón aplicar → vuelve a filtrar
   document.getElementById('btn-apply').addEventListener('click', ()=>{
-    const entered = document.getElementById('fld-patient').value.trim();
-
-    const search = new URLSearchParams(window.location.search);
-    if (entered) search.set('deviceId', entered); else search.delete('deviceId');
-
-    // Si la clave venía en la URL, la conservamos; si no, no la escribimos.
-    if (params.hadKey) search.set('key', params.key); else search.delete('key');
-
-    history.replaceState({},'', `${location.pathname}?${search.toString()}`);
-    fetchList(getQueryParams());
+    fetchList(params);
   });
 
-  // Exportar CSV con los datos filtrados actuales
+  // Exportar
   document.getElementById('btn-export').addEventListener('click', async ()=>{
-    const rows = await fetchList(getQueryParams());
+    const rows = await fetchList(params);
     exportCSV(rows);
   });
 
-  // Primera carga
+  // Primera carga + auto-refresh
   fetchList(params);
-
-  // Auto-refresh cada 60s (opcional)
-  setInterval(()=> fetchList(getQueryParams()), 60000);
+  setInterval(()=> fetchList(params), 60000);
 });
