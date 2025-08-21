@@ -1,32 +1,31 @@
-<!DOCTYPE html> 
+<!DOCTYPE html>
 <html lang="es">
 <head>
   <meta charset="UTF-8" />
   <title>FetalAlert – Panel Clínico</title>
   <meta name="viewport" content="width=device-width, initial-scale=1" />
-  <!-- CSS separado -->
   <link rel="stylesheet" href="medico.css" />
 </head>
 <body>
-
+ 
   <!-- Header -->
   <header class="md-header">
     <div class="md-header__title">
       <h1>FetalAlert – Panel Clínico</h1>
       <p class="md-header__subtitle">Visor para profesionales de la salud</p>
     </div>
-    <!-- Indicador de conexión a la nube de FetalAlert -->
     <div id="md-conn" class="md-conn md-conn--idle">Conectando a FA Cloud…</div>
   </header>
-
+ 
   <!-- Barra de filtros / info -->
   <section class="md-toolbar">
     <div class="md-row">
       <div class="md-field">
         <label>ID Paciente</label>
-        <input id="fld-patient" type="text" placeholder="Ej. 12345" />
+        <!-- ID de demo fijo -->
+        <input id="fld-patient" type="text" value="DEMO-001" readonly title="ID de demo fijo"/>
       </div>
-
+ 
       <div class="md-field">
         <label>Rango de fecha (opcional)</label>
         <div class="md-inline">
@@ -36,14 +35,14 @@
           <input id="fld-to" type="date" min="2025-07-01" />
         </div>
       </div>
-
+ 
       <div class="md-actions">
         <button id="btn-apply" class="md-btn md-btn--primary">Aplicar</button>
         <button id="btn-export" class="md-btn md-btn--ghost">Exportar CSV</button>
       </div>
     </div>
   </section>
-
+ 
   <!-- Resumen -->
   <main class="md-main">
     <section class="md-cards">
@@ -71,17 +70,15 @@
           </div>
         </div>
       </div>
-
+ 
       <div class="md-card">
         <h3>Estado</h3>
-        <!-- Píldora de estado global -->
         <div id="md-status" class="md-status md-status--idle">Esperando datos…</div>
-        <!-- Detalles compactos del estado -->
         <p id="md-state-extra" class="md-hint" style="margin-top:.5rem;"></p>
         <p class="md-hint">* Los datos se actualizan cuando la paciente realiza una medición.</p>
       </div>
     </section>
-
+ 
     <!-- Tabla -->
     <section class="md-table-wrap">
       <h3>Historial reciente</h3>
@@ -101,13 +98,13 @@
       </table>
     </section>
   </main>
-  
-  <!-- ========= PIE DE PÁGINA ========= -->
+ 
   <footer class="footer">
     <p>FetalAlert Panamá &copy; 2025 – Todos los derechos reservados</p>
   </footer>
-
-  <!-- JS separado -->
-  <script src="medico.js"></script>
+ 
+  <!-- JS correcto + query para bustear cache del archivo -->
+  <script defer src="script.js?v=2"></script>
 </body>
 </html>
+ 
