@@ -1,11 +1,11 @@
 /* ============================
    CONFIGURACIÓN
    ============================ */
-const DEFAULT_KEY = 'FA-Cloud-2025_vJtF!p03'; // no se usa en local, se deja por compatibilidad
-const MIN_DATE_STR = '2025-07-01';
+const DEFAULT_KEY   = 'FA-Cloud-2025_vJtF!p03'; // compatibilidad
+const MIN_DATE_STR  = '2025-07-01';
 const DEMO_DEVICE_ID = 'DEMO-001';
 
-// JSON local con cache-buster para evitar caché de GitHub Pages
+// JSON local con cache-buster (evita caché de GitHub Pages)
 function jsonURL() {
   return `./medico_demo.json?rev=${Date.now()}`;
 }
@@ -33,6 +33,7 @@ function getQueryParams(){
   };
 }
 
+// Interpretación clínica resumida
 function statusHR(hr){
   if (hr == null || hr === '' || isNaN(hr)) return '–';
   const v = Number(hr);
@@ -47,20 +48,36 @@ function statusSpO2(s){
   if (v < 94) return 'Zona de observación';
   return 'Dentro de umbral';
 }
+// NUEVO: interpretación de movimientos fetales (conteo de la sesión)
+function statusMoves(n){
+  if (n == null || n === '' || isNaN(n)) return '–';
+  const v = Number(n);
+  if (v === 0) return 'Fuera de umbral establecido';   // ausencia: alerta
+  if (v <= 2)  return 'Zona de observación';           // bajo recuento
+  return 'Dentro de umbral';                           // ≥3: esperado en sesión
+}
 
+// Fechas
 function toYMD(d){
   const y = d.getFullYear();
   const m = String(d.getMonth()+1).padStart(2,'0');
   const da = String(d.getDate()).padStart(2,'0');
   return `${y}-${m}-${da}`;
 }
-function parseDDMMYYYY(str){
+function parseDDMMYYYY(str){        // '04/08/2025' -> Date local (00:00)
   if (!str) return null;
   const [dd,mm,yyyy] = str.split('/').map(x=>parseInt(x,10));
   if (!yyyy || !mm || !dd) return null;
   return new Date(yyyy, mm-1, dd);
 }
-function parseRowDate(r){
+// *** FIX rango inclusivo: parsea 'YYYY-MM-DD' como fecha LOCAL (no UTC) ***
+function parseYMDLocal(ymd){        // '2025-08-19' -> Date local (00:00)
+  if (!ymd) return null;
+  const [y,m,d] = ymd.split('-').map(n=>parseInt(n,10));
+  if (!y || !m || !d) return null;
+  return new Date(y, m-1, d);
+}
+function parseRowDate(r){            // combina fecha + hora
   const d = parseDDMMYYYY(r?.fecha);
   if (!d) return null;
   const [hh,mi] = String(r?.hora||'00:00').split(':').map(x=>parseInt(x,10));
@@ -105,15 +122,18 @@ function renderSummary(last){
 
   const hrMsg   = statusHR(last?.fc);
   const spo2Msg = statusSpO2(last?.spo2);
+  const movMsg  = statusMoves(last?.patadas);
 
   qs('#last-hr-status').textContent   = hrMsg;
   qs('#last-spo2-status').textContent = spo2Msg;
+  qs('#last-mov-status').textContent  = movMsg;
 
+  // Estado global (contempla los 3)
   const st = qs('#md-status');
-  if (hrMsg === 'Fuera de umbral establecido' || spo2Msg === 'Fuera de umbral establecido') {
+  if ([hrMsg,spo2Msg,movMsg].includes('Fuera de umbral establecido')) {
     st.textContent = LBL_STATE.err;
     st.className   = 'md-status md-status--err';
-  } else if (hrMsg === 'Zona de observación' || spo2Msg === 'Zona de observación') {
+  } else if ([hrMsg,spo2Msg,movMsg].includes('Zona de observación')) {
     st.textContent = LBL_STATE.warn;
     st.className   = 'md-status md-status--warn';
   } else if (last) {
@@ -188,6 +208,7 @@ function renderTable(rows){
   });
 }
 
+/* Export CSV */
 function exportCSV(rows){
   if(!rows || !rows.length){ alert('No hay datos para exportar'); return; }
   const header = ['FECHA','HORA','FC','SpO2','PATADAS'];
@@ -215,21 +236,23 @@ async function fetchList(params){
 
     let rows = json.rows || [];
 
-    // Filtrado por fecha en cliente
+    // Filtrado por fecha en cliente (INCLUSIVO; corrige problema del "día anterior")
     const fVal = qs('#fld-from')?.value || '';
     const tVal = qs('#fld-to')?.value   || '';
-    const fromDate = fVal ? new Date(fVal) : null;
-    const toDate   = tVal ? new Date(tVal) : null;
+    const fromDate = parseYMDLocal(fVal);
+    const toDate   = parseYMDLocal(tVal);
 
     rows = rows.filter(r=>{
-      const d = parseDDMMYYYY(r.fecha);
+      const d = parseDDMMYYYY(r.fecha); // fecha del registro (00:00 local)
       if (!d) return false;
       let ok = true;
       if (fromDate) ok = ok && (d >= fromDate);
-      if (toDate)   ok = ok && (d <= toDate);
+      if (toDate)   ok = ok && (d <= toDate); // inclusivo
       return ok;
     });
-    rows.sort((a,b)=> parseRowDate(b) - parseRowDate(a)); // más reciente primero
+
+    // Orden descendente (más reciente primero)
+    rows.sort((a,b)=> parseRowDate(b) - parseRowDate(a));
 
     renderSummary(rows[0] || null);
     renderStateDetails(rows);
