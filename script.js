@@ -5,23 +5,21 @@ const DEFAULT_KEY   = 'FA-Cloud-2025_vJtF!p03'; // compatibilidad
 const MIN_DATE_STR  = '2025-07-01';
 const DEMO_DEVICE_ID = 'DEMO-001';
 
-// JSON local con cache-buster (evita caché de GitHub Pages)
+// JSON local con cache-buster para evitar caché de GitHub Pages
 function jsonURL() {
   return `./medico_demo.json?rev=${Date.now()}`;
 }
-
 const LBL_STATE = {
   ok:   'Dentro de rango',
   warn: 'Bajo observación',
   err:  'Alerta',
   idle: 'Esperando datos…'
 };
-
+ 
 /* ============================
    UTILIDADES
    ============================ */
 const qs = s => document.querySelector(s);
-
 function getQueryParams(){
   const p = new URLSearchParams(window.location.search);
   const hadKey = p.has('key');
@@ -33,7 +31,6 @@ function getQueryParams(){
   };
 }
 
-// Interpretación clínica resumida
 function statusHR(hr){
   if (hr == null || hr === '' || isNaN(hr)) return '–';
   const v = Number(hr);
@@ -48,16 +45,7 @@ function statusSpO2(s){
   if (v < 94) return 'Zona de observación';
   return 'Dentro de umbral';
 }
-// NUEVO: interpretación de movimientos fetales (conteo de la sesión)
-function statusMoves(n){
-  if (n == null || n === '' || isNaN(n)) return '–';
-  const v = Number(n);
-  if (v === 0) return 'Fuera de umbral establecido';   // ausencia: alerta
-  if (v <= 2)  return 'Zona de observación';           // bajo recuento
-  return 'Dentro de umbral';                           // ≥3: esperado en sesión
-}
 
-// Fechas
 function toYMD(d){
   const y = d.getFullYear();
   const m = String(d.getMonth()+1).padStart(2,'0');
@@ -94,7 +82,7 @@ function fmtMonthYear(d){
   const meses = ['ene','feb','mar','abr','may','jun','jul','ago','sep','oct','nov','dic'];
   return `${meses[d.getMonth()]} ${d.getFullYear()}`;
 }
-
+ 
 /* ============================
    RENDER
    ============================ */
@@ -112,23 +100,20 @@ function renderConnection(state, msg){
     el.className = 'md-conn md-conn--idle';
   }
 }
-
+ 
 function renderSummary(last){
   qs('#last-date').textContent = last?.fecha || '--';
   qs('#last-time').textContent = last?.hora || '--';
   qs('#last-hr').textContent   = (last?.fc   ?? '--');
   qs('#last-spo2').textContent = (last?.spo2 ?? '--');
   qs('#last-mov').textContent  = (last?.patadas ?? '--');
-
+ 
   const hrMsg   = statusHR(last?.fc);
   const spo2Msg = statusSpO2(last?.spo2);
-  const movMsg  = statusMoves(last?.patadas);
 
   qs('#last-hr-status').textContent   = hrMsg;
   qs('#last-spo2-status').textContent = spo2Msg;
-  qs('#last-mov-status').textContent  = movMsg;
 
-  // Estado global (contempla los 3)
   const st = qs('#md-status');
   if ([hrMsg,spo2Msg,movMsg].includes('Fuera de umbral establecido')) {
     st.textContent = LBL_STATE.err;
@@ -144,16 +129,15 @@ function renderSummary(last){
     st.className   = 'md-status md-status--idle';
   }
 }
-
 function renderStateDetails(rows){
   const extra = qs('#md-state-extra');
   if (!extra) return;
-
+ 
   if (!rows || !rows.length){
     extra.innerHTML = 'Sin datos en el rango seleccionado.';
     return;
   }
-
+ 
   const now = new Date();
   const lastDT = parseRowDate(rows[0]);
   let agoTxt = '--';
@@ -165,11 +149,11 @@ function renderStateDetails(rows){
       agoTxt = `${h} h ${m} min`;
     }
   }
-
+ 
   const cut1h  = new Date(now.getTime() - 60*60000);
   const cut30m = new Date(now.getTime() - 30*60000);
   let lowSp = 0, zeroMov = 0;
-
+ 
   const dates = [];
   for (const r of rows){
     const dt = parseRowDate(r);
@@ -180,14 +164,14 @@ function renderStateDetails(rows){
   }
   dates.sort((a,b)=>a-b);
   const start = dates[0], end = dates[dates.length-1];
-
+ 
   extra.innerHTML = `
     Última actualización: ${rows[0]?.hora ?? '--'} (hace ${agoTxt}).<br>
     SpO₂ &lt; 90% en 1 h: ${lowSp}. Movimientos en 30 min: ${zeroMov === 0 ? 'OK' : zeroMov + ' sin movimientos'}.<br>
     Cobertura en base de datos: ${fmtMonthYear(start)} – ${fmtMonthYear(end)} (${diffMonths(start,end)} meses).
   `;
 }
-
+ 
 function renderTable(rows){
   const tb = document.getElementById('tbl-body');
   tb.innerHTML = '';
@@ -208,7 +192,6 @@ function renderTable(rows){
   });
 }
 
-/* Export CSV */
 function exportCSV(rows){
   if(!rows || !rows.length){ alert('No hay datos para exportar'); return; }
   const header = ['FECHA','HORA','FC','SpO2','PATADAS'];
@@ -221,7 +204,7 @@ function exportCSV(rows){
   document.body.appendChild(a); a.click();
   document.body.removeChild(a); URL.revokeObjectURL(url);
 }
-
+ 
 /* ============================
    FETCH
    ============================ */
@@ -233,14 +216,14 @@ async function fetchList(params){
     const json = await res.json();
     if (!json.ok) throw new Error('Respuesta no OK');
     renderConnection('ok');
-
+ 
     let rows = json.rows || [];
 
-    // Filtrado por fecha en cliente (INCLUSIVO; corrige problema del "día anterior")
+    // Filtrado por fecha en cliente
     const fVal = qs('#fld-from')?.value || '';
     const tVal = qs('#fld-to')?.value   || '';
-    const fromDate = parseYMDLocal(fVal);
-    const toDate   = parseYMDLocal(tVal);
+    const fromDate = fVal ? new Date(fVal) : null;
+    const toDate   = tVal ? new Date(tVal) : null;
 
     rows = rows.filter(r=>{
       const d = parseDDMMYYYY(r.fecha); // fecha del registro (00:00 local)
@@ -250,9 +233,7 @@ async function fetchList(params){
       if (toDate)   ok = ok && (d <= toDate); // inclusivo
       return ok;
     });
-
-    // Orden descendente (más reciente primero)
-    rows.sort((a,b)=> parseRowDate(b) - parseRowDate(a));
+    rows.sort((a,b)=> parseRowDate(b) - parseRowDate(a)); // más reciente primero
 
     renderSummary(rows[0] || null);
     renderStateDetails(rows);
@@ -267,45 +248,39 @@ async function fetchList(params){
     return [];
   }
 }
-
+ 
 /* ============================
    INIT
    ============================ */
 document.addEventListener('DOMContentLoaded', ()=>{
   const params = getQueryParams();
-
   // ID de demo fijo
   const idEl = document.getElementById('fld-patient');
   idEl.value = DEMO_DEVICE_ID;
   idEl.readOnly = true;
-
   // Date pickers: límites y valores por defecto
   const fromEl = document.getElementById('fld-from');
   const toEl   = document.getElementById('fld-to');
   const today  = new Date();
-
   fromEl.setAttribute('min', MIN_DATE_STR);
   toEl.setAttribute('min',   MIN_DATE_STR);
   if (!fromEl.value) fromEl.value = MIN_DATE_STR;
   if (!toEl.value)   toEl.value   = toYMD(today);
-
   fromEl.addEventListener('change', ()=>{
     if (toEl.value < fromEl.value) toEl.value = fromEl.value;
     toEl.setAttribute('min', fromEl.value || MIN_DATE_STR);
   });
-
   // Botón aplicar → vuelve a filtrar
   document.getElementById('btn-apply').addEventListener('click', ()=>{
     fetchList(params);
   });
-
   // Exportar
   document.getElementById('btn-export').addEventListener('click', async ()=>{
     const rows = await fetchList(params);
     exportCSV(rows);
   });
-
   // Primera carga + auto-refresh
   fetchList(params);
   setInterval(()=> fetchList(params), 60000);
 });
+ 
