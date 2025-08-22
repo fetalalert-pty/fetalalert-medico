@@ -1,14 +1,15 @@
 /* ============================
    CONFIGURACIÓN
    ============================ */
-const DEFAULT_KEY   = 'FA-Cloud-2025_vJtF!p03'; // compatibilidad
-const MIN_DATE_STR  = '2025-07-01';
+const DEFAULT_KEY = 'FA-Cloud-2025_vJtF!p03'; // no se usa en local, se deja por compatibilidad
+const MIN_DATE_STR = '2025-07-01';
 const DEMO_DEVICE_ID = 'DEMO-001';
-
+ 
 // JSON local con cache-buster para evitar caché de GitHub Pages
 function jsonURL() {
   return `./medico_demo.json?rev=${Date.now()}`;
 }
+ 
 const LBL_STATE = {
   ok:   'Dentro de rango',
   warn: 'Bajo observación',
@@ -20,6 +21,7 @@ const LBL_STATE = {
    UTILIDADES
    ============================ */
 const qs = s => document.querySelector(s);
+ 
 function getQueryParams(){
   const p = new URLSearchParams(window.location.search);
   const hadKey = p.has('key');
@@ -30,7 +32,7 @@ function getQueryParams(){
     hadKey
   };
 }
-
+ 
 function statusHR(hr){
   if (hr == null || hr === '' || isNaN(hr)) return '–';
   const v = Number(hr);
@@ -45,27 +47,20 @@ function statusSpO2(s){
   if (v < 94) return 'Zona de observación';
   return 'Dentro de umbral';
 }
-
+ 
 function toYMD(d){
   const y = d.getFullYear();
   const m = String(d.getMonth()+1).padStart(2,'0');
   const da = String(d.getDate()).padStart(2,'0');
   return `${y}-${m}-${da}`;
 }
-function parseDDMMYYYY(str){        // '04/08/2025' -> Date local (00:00)
+function parseDDMMYYYY(str){
   if (!str) return null;
   const [dd,mm,yyyy] = str.split('/').map(x=>parseInt(x,10));
   if (!yyyy || !mm || !dd) return null;
   return new Date(yyyy, mm-1, dd);
 }
-// *** FIX rango inclusivo: parsea 'YYYY-MM-DD' como fecha LOCAL (no UTC) ***
-function parseYMDLocal(ymd){        // '2025-08-19' -> Date local (00:00)
-  if (!ymd) return null;
-  const [y,m,d] = ymd.split('-').map(n=>parseInt(n,10));
-  if (!y || !m || !d) return null;
-  return new Date(y, m-1, d);
-}
-function parseRowDate(r){            // combina fecha + hora
+function parseRowDate(r){
   const d = parseDDMMYYYY(r?.fecha);
   if (!d) return null;
   const [hh,mi] = String(r?.hora||'00:00').split(':').map(x=>parseInt(x,10));
@@ -110,15 +105,15 @@ function renderSummary(last){
  
   const hrMsg   = statusHR(last?.fc);
   const spo2Msg = statusSpO2(last?.spo2);
-
+ 
   qs('#last-hr-status').textContent   = hrMsg;
   qs('#last-spo2-status').textContent = spo2Msg;
-
+ 
   const st = qs('#md-status');
-  if ([hrMsg,spo2Msg,movMsg].includes('Fuera de umbral establecido')) {
+  if (hrMsg === 'Fuera de umbral establecido' || spo2Msg === 'Fuera de umbral establecido') {
     st.textContent = LBL_STATE.err;
     st.className   = 'md-status md-status--err';
-  } else if ([hrMsg,spo2Msg,movMsg].includes('Zona de observación')) {
+  } else if (hrMsg === 'Zona de observación' || spo2Msg === 'Zona de observación') {
     st.textContent = LBL_STATE.warn;
     st.className   = 'md-status md-status--warn';
   } else if (last) {
@@ -129,6 +124,7 @@ function renderSummary(last){
     st.className   = 'md-status md-status--idle';
   }
 }
+ 
 function renderStateDetails(rows){
   const extra = qs('#md-state-extra');
   if (!extra) return;
@@ -191,7 +187,7 @@ function renderTable(rows){
     tb.appendChild(tr);
   });
 }
-
+ 
 function exportCSV(rows){
   if(!rows || !rows.length){ alert('No hay datos para exportar'); return; }
   const header = ['FECHA','HORA','FC','SpO2','PATADAS'];
@@ -218,23 +214,23 @@ async function fetchList(params){
     renderConnection('ok');
  
     let rows = json.rows || [];
-
+ 
     // Filtrado por fecha en cliente
     const fVal = qs('#fld-from')?.value || '';
     const tVal = qs('#fld-to')?.value   || '';
     const fromDate = fVal ? new Date(fVal) : null;
     const toDate   = tVal ? new Date(tVal) : null;
-
+ 
     rows = rows.filter(r=>{
-      const d = parseDDMMYYYY(r.fecha); // fecha del registro (00:00 local)
+      const d = parseDDMMYYYY(r.fecha);
       if (!d) return false;
       let ok = true;
       if (fromDate) ok = ok && (d >= fromDate);
-      if (toDate)   ok = ok && (d <= toDate); // inclusivo
+      if (toDate)   ok = ok && (d <= toDate);
       return ok;
     });
     rows.sort((a,b)=> parseRowDate(b) - parseRowDate(a)); // más reciente primero
-
+ 
     renderSummary(rows[0] || null);
     renderStateDetails(rows);
     renderTable(rows.slice(0,50));
@@ -254,31 +250,38 @@ async function fetchList(params){
    ============================ */
 document.addEventListener('DOMContentLoaded', ()=>{
   const params = getQueryParams();
+ 
   // ID de demo fijo
   const idEl = document.getElementById('fld-patient');
   idEl.value = DEMO_DEVICE_ID;
   idEl.readOnly = true;
+ 
   // Date pickers: límites y valores por defecto
   const fromEl = document.getElementById('fld-from');
   const toEl   = document.getElementById('fld-to');
   const today  = new Date();
+ 
   fromEl.setAttribute('min', MIN_DATE_STR);
   toEl.setAttribute('min',   MIN_DATE_STR);
   if (!fromEl.value) fromEl.value = MIN_DATE_STR;
   if (!toEl.value)   toEl.value   = toYMD(today);
+ 
   fromEl.addEventListener('change', ()=>{
     if (toEl.value < fromEl.value) toEl.value = fromEl.value;
     toEl.setAttribute('min', fromEl.value || MIN_DATE_STR);
   });
+ 
   // Botón aplicar → vuelve a filtrar
   document.getElementById('btn-apply').addEventListener('click', ()=>{
     fetchList(params);
   });
+ 
   // Exportar
   document.getElementById('btn-export').addEventListener('click', async ()=>{
     const rows = await fetchList(params);
     exportCSV(rows);
   });
+ 
   // Primera carga + auto-refresh
   fetchList(params);
   setInterval(()=> fetchList(params), 60000);
