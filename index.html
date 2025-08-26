@@ -25,7 +25,7 @@
         <!-- ID de demo fijo -->
         <input id="fld-patient" type="text" value="DEMO-001" readonly title="ID de demo fijo"/>
       </div>
- 
+
       <div class="md-field">
         <label>Rango de fecha (opcional)</label>
         <div class="md-inline">
@@ -35,7 +35,7 @@
           <input id="fld-to" type="date" min="2025-07-01" />
         </div>
       </div>
- 
+
       <div class="md-actions">
         <button id="btn-apply" class="md-btn md-btn--primary">Aplicar</button>
         <button id="btn-export" class="md-btn md-btn--ghost">Exportar CSV</button>
@@ -63,14 +63,14 @@
               <div id="last-spo2-status" class="md-metric__status">–</div>
             </div>
             <div class="md-metric">
-              <div class="md-metric__label">Movimientos Fetales</div>
+              <div class="md-metric__label">Movimientos fetales</div>
               <div id="last-mov" class="md-metric__value">--</div>
-              <div class="md-metric__status">–</div>
+              <div id="last-mov-status" class="md-metric__status">–</div>
             </div>
           </div>
         </div>
       </div>
- 
+
       <div class="md-card">
         <h3>Estado</h3>
         <div id="md-status" class="md-status md-status--idle">Esperando datos…</div>
@@ -89,7 +89,7 @@
             <th>Hora</th>
             <th>FC</th>
             <th>SpO₂</th>
-            <th>Mov.</th>
+            <th>Mov. fetales</th>
           </tr>
         </thead>
         <tbody id="tbl-body">
@@ -103,7 +103,7 @@
     <p>FetalAlert Panamá &copy; 2025 – Todos los derechos reservados</p>
   </footer>
  
-  <!-- JS correcto + query para bustear cache del archivo -->
-  <script defer src="script.js?v=2"></script>
+  <!-- JS correcto + query para bustear caché -->
+  <script defer src="script.js?v=3"></script>
 </body>
 </html>

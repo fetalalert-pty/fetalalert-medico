@@ -47,7 +47,7 @@ function statusSpO2(s){
   if (v < 94) return 'Zona de observación';
   return 'Dentro de umbral';
 }
-// NUEVO: leyenda de movimientos fetales por conteo en la medición
+// Leyenda de movimientos fetales por conteo en la medición
 function statusMov(m){
   if (m == null || m === '' || isNaN(m)) return '–';
   const v = Number(m);
@@ -75,6 +75,14 @@ function parseRowDate(r){
   d.setHours(hh||0, mi||0, 0, 0);
   return d;
 }
+// Parse seguro (LOCAL) del valor de <input type="date"> para evitar UTC
+function parseInputYMDLocal(s){
+  if (!s) return null;
+  const [y,m,d] = s.split('-').map(n=>parseInt(n,10));
+  if (!y || !m || !d) return null;
+  return new Date(y, m-1, d); // 00:00 hora local
+}
+
 const diffMinutes = (a,b)=> Math.round((a-b)/60000);
 function diffMonths(a,b){
   if (!a || !b) return 0;
@@ -121,7 +129,7 @@ function renderSummary(last){
   if (movEl) movEl.textContent = movMsg;
 
   const st = qs('#md-status');
-  // Estado general prioriza HR/SpO2; los movimientos se muestran como leyenda pero no disparan estado crítico
+  // Estado general prioriza HR/SpO2; los movimientos se muestran como leyenda
   if (hrMsg === 'Fuera de umbral establecido' || spo2Msg === 'Fuera de umbral establecido') {
     st.textContent = LBL_STATE.err;
     st.className   = 'md-status md-status--err';
@@ -227,20 +235,19 @@ async function fetchList(params){
 
     let rows = json.rows || [];
 
-    // Filtrado por fecha INCLUSIVO usando fin-del-día en "hasta"
+    // Filtrado por fecha INCLUSIVO usando fin-del-día en "hasta" (parse local)
     const fVal = qs('#fld-from')?.value || '';
     const tVal = qs('#fld-to')?.value   || '';
-    const fromDate = fVal ? new Date(fVal) : null;
-    const toDate   = tVal ? new Date(tVal) : null;
-    const toDateEnd = toDate ? new Date(toDate.getTime()) : null;
-    if (toDateEnd) toDateEnd.setHours(23,59,59,999);
+    const fromDate  = fVal ? parseInputYMDLocal(fVal) : null;  // 00:00 local
+    const toDateEnd = tVal ? parseInputYMDLocal(tVal) : null;  // 00:00 local
+    if (toDateEnd) toDateEnd.setHours(23,59,59,999);           // inclusivo
 
     rows = rows.filter(r=>{
-      const dt = parseRowDate(r); // usa fecha + hora reales de la fila
+      const dt = parseRowDate(r); // fecha + hora reales de la fila
       if (!dt) return false;
       let ok = true;
-      if (fromDate) ok = ok && (dt >= fromDate);
-      if (toDateEnd) ok = ok && (dt <= toDateEnd); // inclusivo
+      if (fromDate)  ok = ok && (dt >= fromDate);
+      if (toDateEnd) ok = ok && (dt <= toDateEnd);
       return ok;
     });
     rows.sort((a,b)=> parseRowDate(b) - parseRowDate(a)); // más reciente primero
