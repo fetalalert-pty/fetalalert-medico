@@ -139,3 +139,55 @@ body{
   box-shadow:0 -4px 15px rgba(0,0,0,.1);
   border-top:2px solid rgba(219,112,147,.2);
 }
+/* CSS adicional para aplicar el mismo estilo del campo ID Paciente a los campos de fecha */
+ 
+.md-date {
+  position: relative !important;
+  display: inline-block !important;
+}
+ 
+ 
+.md-date input[type="date"] {
+  padding: .5rem .7rem !important;
+  border: 1px solid var(--border) !important;
+  border-radius: 8px !important;
+  background: #fff !important;  /* Fondo blanco como el campo ID Paciente */
+  min-width: 220px !important;
+
+ 
+  color: transparent !important;
+  caret-color: transparent !important;
+  position: relative !important;
+}
+ 
+ 
+.md-date input[type="date"]::-webkit-datetime-edit {
+  color: transparent;
+}
+ 
+.md-date input[type="date"]::-ms-value {
+  color: transparent;
+}
+ 
+/* El overlay que muestra la fecha en formato dd/mm/aaaa */
+.md-date__overlay {
+  position: absolute;
+  left: 12px;
+  top: 50%;
+  transform: translateY(-50%);
+  pointer-events: none;
+  color: var(--text);  
+  opacity: .9;
+  font: inherit;
+}
+ 
+/* Opcional: Efecto hover para consistencia visual */
+.md-date input[type="date"]:hover {
+  border-color: var(--primary);
+}
+ 
+.md-date input[type="date"]:focus {
+  outline: none;
+  border-color: var(--primary);
+  box-shadow: 0 0 0 2px rgba(168, 85, 247, 0.2);
+}
