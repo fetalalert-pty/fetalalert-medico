@@ -5,6 +5,22 @@
   <title>FetalAlert – Panel Clínico</title>
   <meta name="viewport" content="width=device-width, initial-scale=1" />
   <link rel="stylesheet" href="medico.css" />
+
+  <!-- Mini CSS para mostrar la fecha en formato latino sobre el input date -->
+  <style>
+    .md-date{ position:relative; display:inline-block; }
+    /* Ocultamos el texto del input (no el calendario) y dejamos el overlay legible */
+    .md-date input[type="date"]{
+      color: transparent; caret-color: transparent; background: transparent;
+      position: relative;
+    }
+    .md-date input[type="date"]::-webkit-datetime-edit{ color: transparent; }
+    .md-date input[type="date"]::-ms-value{ color: transparent; }
+    .md-date__overlay{
+      position:absolute; left:12px; top:50%; transform:translateY(-50%);
+      pointer-events:none; color:inherit; opacity:.9; font:inherit;
+    }
+  </style>
 </head>
 <body>
 
@@ -29,14 +45,16 @@
       <div class="md-field">
         <label>Rango de fecha</label>
         <div class="md-inline">
-          <!-- Entradas visibles en formato latino dd/mm/aaaa -->
-          <input id="fld-from-ui" type="text" inputmode="numeric" placeholder="dd/mm/aaaa" aria-label="Desde (dd/mm/aaaa)" />
+          <!-- Calendario nativo conservado, con overlay dd/mm/aaaa -->
+          <div class="md-date">
+            <input id="fld-from" type="date" min="2025-07-01" aria-label="Desde" />
+            <span class="md-date__overlay" id="disp-from"></span>
+          </div>
           <span class="md-sep">–</span>
-          <input id="fld-to-ui" type="text" inputmode="numeric" placeholder="dd/mm/aaaa" aria-label="Hasta (dd/mm/aaaa)" />
-
-          <!-- Backing inputs ocultos (se conservan por compatibilidad; no se muestran) -->
-          <input id="fld-from" type="date" min="2025-07-01" style="display:none" aria-hidden="true" />
-          <input id="fld-to"   type="date" min="2025-07-01" style="display:none" aria-hidden="true" />
+          <div class="md-date">
+            <input id="fld-to" type="date" min="2025-07-01" aria-label="Hasta" />
+            <span class="md-date__overlay" id="disp-to"></span>
+          </div>
         </div>
       </div>
 
@@ -108,6 +126,6 @@
   </footer>
 
   <!-- JS correcto + query para bustear caché -->
-  <script defer src="script.js?v=4"></script>
+  <script defer src="script.js?v=5"></script>
 </body>
 </html>
