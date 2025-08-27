@@ -7,7 +7,7 @@
   <link rel="stylesheet" href="medico.css" />
 </head>
 <body>
- 
+
   <!-- Header -->
   <header class="md-header">
     <div class="md-header__title">
@@ -16,7 +16,7 @@
     </div>
     <div id="md-conn" class="md-conn md-conn--idle">Conectando a FA Cloud…</div>
   </header>
- 
+
   <!-- Barra de filtros / info -->
   <section class="md-toolbar">
     <div class="md-row">
@@ -27,12 +27,16 @@
       </div>
 
       <div class="md-field">
-        <label>Rango de fecha (opcional)</label>
+        <label>Rango de fecha</label>
         <div class="md-inline">
-          <!-- límite inferior: 2025-07-01 -->
-          <input id="fld-from" type="date" min="2025-07-01" />
+          <!-- Entradas visibles en formato latino dd/mm/aaaa -->
+          <input id="fld-from-ui" type="text" inputmode="numeric" placeholder="dd/mm/aaaa" aria-label="Desde (dd/mm/aaaa)" />
           <span class="md-sep">–</span>
-          <input id="fld-to" type="date" min="2025-07-01" />
+          <input id="fld-to-ui" type="text" inputmode="numeric" placeholder="dd/mm/aaaa" aria-label="Hasta (dd/mm/aaaa)" />
+
+          <!-- Backing inputs ocultos (se conservan por compatibilidad; no se muestran) -->
+          <input id="fld-from" type="date" min="2025-07-01" style="display:none" aria-hidden="true" />
+          <input id="fld-to"   type="date" min="2025-07-01" style="display:none" aria-hidden="true" />
         </div>
       </div>
 
@@ -42,7 +46,7 @@
       </div>
     </div>
   </section>
- 
+
   <!-- Resumen -->
   <main class="md-main">
     <section class="md-cards">
@@ -78,7 +82,7 @@
         <p class="md-hint">* Los datos se actualizan cuando la paciente realiza una medición.</p>
       </div>
     </section>
- 
+
     <!-- Tabla -->
     <section class="md-table-wrap">
       <h3>Historial reciente</h3>
@@ -98,12 +102,12 @@
       </table>
     </section>
   </main>
- 
+
   <footer class="footer">
     <p>FetalAlert Panamá &copy; 2025 – Todos los derechos reservados</p>
   </footer>
- 
+
   <!-- JS correcto + query para bustear caché -->
-  <script defer src="script.js?v=3"></script>
+  <script defer src="script.js?v=4"></script>
 </body>
 </html>

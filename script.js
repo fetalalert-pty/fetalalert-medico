@@ -51,11 +51,12 @@ function statusSpO2(s){
 function statusMov(m){
   if (m == null || m === '' || isNaN(m)) return '–';
   const v = Number(m);
-  if (v === 0) return 'Sin movimientos en la medición';
-  if (v <= 3)  return 'Conteo bajo (vigilar)';
-  return 'Dentro de umbral';
+  if (v === 0) return 'Ausentes';
+  if (v <= 3)  return 'Escasos';
+  return 'Dentro del rango';
 }
 
+// ---- Manejo de fechas ----
 function toYMD(d){
   const y = d.getFullYear();
   const m = String(d.getMonth()+1).padStart(2,'0');
@@ -75,12 +76,30 @@ function parseRowDate(r){
   d.setHours(hh||0, mi||0, 0, 0);
   return d;
 }
-// Parse seguro (LOCAL) del valor de <input type="date"> para evitar UTC
+// Parse (LOCAL) del valor de <input type="date"> (no se usa en la UI, se deja por compatibilidad)
 function parseInputYMDLocal(s){
   if (!s) return null;
   const [y,m,d] = s.split('-').map(n=>parseInt(n,10));
   if (!y || !m || !d) return null;
   return new Date(y, m-1, d); // 00:00 hora local
+}
+
+// NUEVO: formato latino visible
+function fmtLat(d){
+  const dd = String(d.getDate()).padStart(2,'0');
+  const mm = String(d.getMonth()+1).padStart(2,'0');
+  const yyyy = d.getFullYear();
+  return `${dd}/${mm}/${yyyy}`;
+}
+function parseLat(s){
+  if (!s) return null;
+  const m = /^(\d{2})\/(\d{2})\/(\d{4})$/.exec(s.trim());
+  if (!m) return null;
+  const dd = +m[1], mm = +m[2], yyyy = +m[3];
+  const d  = new Date(yyyy, mm-1, dd);
+  // Validación de calendario (evita 31/02/etc.)
+  if (d.getFullYear()!==yyyy || d.getMonth()!==mm-1 || d.getDate()!==dd) return null;
+  return d;
 }
 
 const diffMinutes = (a,b)=> Math.round((a-b)/60000);
@@ -129,7 +148,7 @@ function renderSummary(last){
   if (movEl) movEl.textContent = movMsg;
 
   const st = qs('#md-status');
-  // Estado general prioriza HR/SpO2; los movimientos se muestran como leyenda
+  // Estado general prioriza HR/SpO2
   if (hrMsg === 'Fuera de umbral establecido' || spo2Msg === 'Fuera de umbral establecido') {
     st.textContent = LBL_STATE.err;
     st.className   = 'md-status md-status--err';
@@ -235,12 +254,12 @@ async function fetchList(params){
 
     let rows = json.rows || [];
 
-    // Filtrado por fecha INCLUSIVO usando fin-del-día en "hasta" (parse local)
-    const fVal = qs('#fld-from')?.value || '';
-    const tVal = qs('#fld-to')?.value   || '';
-    const fromDate  = fVal ? parseInputYMDLocal(fVal) : null;  // 00:00 local
-    const toDateEnd = tVal ? parseInputYMDLocal(tVal) : null;  // 00:00 local
-    if (toDateEnd) toDateEnd.setHours(23,59,59,999);           // inclusivo
+    // Filtrado por fecha INCLUSIVO (UI en dd/mm/aaaa)
+    const fValUI = qs('#fld-from-ui')?.value?.trim() || '';
+    const tValUI = qs('#fld-to-ui')?.value?.trim()   || '';
+    const fromDate  = parseLat(fValUI);       // 00:00 local
+    const toDateEnd = parseLat(tValUI);       // 00:00 local
+    if (toDateEnd) toDateEnd.setHours(23,59,59,999); // inclusivo
 
     rows = rows.filter(r=>{
       const dt = parseRowDate(r); // fecha + hora reales de la fila
@@ -260,7 +279,7 @@ async function fetchList(params){
     console.warn('Error fetch list:', e);
     renderConnection('err', e.message);
     renderSummary(null);
-    renderStateDetails([]);
+    renderStateDetails([]); 
     renderTable([]);
     return [];
   }
@@ -277,20 +296,32 @@ document.addEventListener('DOMContentLoaded', ()=>{
   idEl.value = DEMO_DEVICE_ID;
   idEl.readOnly = true;
 
-  // Date pickers: límites y valores por defecto
-  const fromEl = document.getElementById('fld-from');
-  const toEl   = document.getElementById('fld-to');
-  const today  = new Date();
+  // Date pickers visibles (formato latino)
+  const fromUI = document.getElementById('fld-from-ui');
+  const toUI   = document.getElementById('fld-to-ui');
 
-  fromEl.setAttribute('min', MIN_DATE_STR);
-  toEl.setAttribute('min',   MIN_DATE_STR);
-  if (!fromEl.value) fromEl.value = MIN_DATE_STR;
-  if (!toEl.value)   toEl.value   = toYMD(today);
+  // Valores por defecto (mínimo y hoy), mostrados como dd/mm/aaaa
+  const minDate = parseInputYMDLocal(MIN_DATE_STR);
+  const today   = new Date();
+  fromUI.value = fmtLat(minDate);
+  toUI.value   = fmtLat(today);
 
-  fromEl.addEventListener('change', ()=>{
-    if (toEl.value < fromEl.value) toEl.value = fromEl.value;
-    toEl.setAttribute('min', fromEl.value || MIN_DATE_STR);
-  });
+  // Mantener coherencia de rango: si "desde" > "hasta", se ajusta "hasta"
+  function syncRange(){
+    const f = parseLat(fromUI.value);
+    const t = parseLat(toUI.value);
+    if (f && t && t < f) toUI.value = fmtLat(f);
+  }
+  fromUI.addEventListener('change', syncRange);
+  toUI.addEventListener('change',   syncRange);
+
+  // (Se conservan los inputs type=date ocultos por compatibilidad con min)
+  const fromHidden = document.getElementById('fld-from');
+  const toHidden   = document.getElementById('fld-to');
+  fromHidden.setAttribute('min', MIN_DATE_STR);
+  toHidden.setAttribute('min',   MIN_DATE_STR);
+  fromHidden.value = MIN_DATE_STR;
+  toHidden.value   = toYMD(today);
 
   // Botón aplicar → vuelve a filtrar
   document.getElementById('btn-apply').addEventListener('click', ()=>{
